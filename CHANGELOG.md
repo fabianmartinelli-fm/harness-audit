@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.2] - 2026-10-09
+
+**The user memory file no longer leaks into the project count.** The inventory walks from the
+project up to `HOME` looking for `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`. For any
+project under `HOME`, the last stop of that walk is `HOME` itself, where `.claude/CLAUDE.md` is
+not a project file: it is `~/.claude/CLAUDE.md`, the user memory. It was counted as always-on
+project context even without `--include-user`, so a run meant to measure only the project
+reported the user's personal instructions as the project's cost.
+
+- **`~/.claude/CLAUDE.md` counts only with `--include-user`**, and still exactly once when the
+  flag is set. Two smoke checks cover both cases.
+
 ## [1.5.1] - 2026-09-23
 
 **The repository moved account.** The GitHub profile username changed, so every clone URL,

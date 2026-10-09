@@ -4,7 +4,7 @@ description: Audits and restructures a project's AI agent harness (CLAUDE.md, AG
 license: MIT
 compatibility: Python 3.9+ and git. Full support for Claude Code, Codex, Cursor and Antigravity CLI (legacy Gemini CLI treated as Antigravity). Use a frontier model for diagnose/apply.
 metadata:
-  version: "1.5.1"
+  version: "1.5.2"
   source: "https://github.com/fabianmartinelli-fm/harness-audit"
 disable-model-invocation: true
 argument-hint: "diagnose | apply | verify | check"
