@@ -212,6 +212,14 @@ grep -qE 'SECRET-(ENV|HEADER|CMD|PLUGIN)-VALUE' <<<"$inv"; check $? 1 "inventory
 grep -q 'secret-host.example.com' <<<"$inv"; check $? 1 "inventory leaks no MCP server URL"
 grep -q 'api-token=\*\*\*' <<<"$inv"; check $? 0 "inventory masks token pairs in hook commands"
 HOME="$FH" python3 "$REPO/tests/assert_inventory.py" "$S/inventory.py" "$P"; check $? 0 "inventory clips hook commands and calls itself a lower bound"
+# A project under HOME walks up to HOME, where .claude/CLAUDE.md is the user memory file.
+mkdir -p "$FH/work/proj" && printf '# user memory\n' > "$FH/.claude/CLAUDE.md"
+umem() { HOME="$FH" python3 "$S/inventory.py" --project "$FH/work/proj" "$@" | python3 -c "
+import json,sys
+print(sum(x['kind'] == 'memory-file' for x in json.load(sys.stdin)['agents']['claude-code']['always_on']))"; }
+check "$(umem)" 0 "user memory stays out of the project walk without --include-user"
+check "$(umem --include-user)" 1 "user memory counted once with --include-user"
+rm "$FH/.claude/CLAUDE.md"
 
 # --- 1.4: which instruction file each agent actually reads, and the silent failures
 R="$T/resolution"; RH="$T/reshome"; mkdir -p "$R/.claude" "$RH/.claude"

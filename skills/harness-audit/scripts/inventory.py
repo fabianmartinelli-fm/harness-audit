@@ -277,7 +277,8 @@ def claude_layers(root: Path, include_user: bool, res: dict):
     candidates = []
     for p in ancestors(root):
         for name in ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"):
-            if (p / name).is_file():
+            # At HOME, .claude/CLAUDE.md IS the user memory: counts only with include_user.
+            if (p / name).is_file() and (p / name).resolve() != USER_MEMORY.resolve():
                 candidates.append(p / name)
     if include_user and USER_MEMORY.is_file():
         candidates.append(USER_MEMORY)
