@@ -4,7 +4,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 S="$REPO/skills/harness-audit/scripts"
 T="$(mktemp -d)"; P="$T/proj"; mkdir -p "$P" && cd "$P"
-git init -q && git config user.email t@t && git config user.name t
+git init -q -b main && git config user.email t@t && git config user.name t
 fail=0; check() { if [ "$1" = "$2" ]; then echo "PASS $3"; else echo "FAIL $3 (got $1, want $2)"; fail=1; fi; }
 
 python3 - <<'PY'
@@ -113,7 +113,7 @@ lint_out=$(python3 .harness/scripts/lint.py 2>/dev/null); [[ "$lint_out" == *H01
 
 # --- 1.2 correction 1: a stale branch must stop the audit before it measures anything
 U="$T/upstream"; W="$T/work"
-git init -q --bare "$U"
+git init -q -b main --bare "$U"
 git clone -q "$U" "$W" && git -C "$W" config user.email t@t && git -C "$W" config user.name t
 echo one > "$W/a.txt" && git -C "$W" add -A && git -C "$W" commit -qm one && git -C "$W" push -q origin HEAD:main
 git -C "$W" branch -q --set-upstream-to=origin/main 2>/dev/null
@@ -143,7 +143,7 @@ assert d['git_environment']['wrapper_suspected'] is True, d['git_environment']
 assert d['git_environment']['note'], d['git_environment']" <<<"$wrapped"; check $? 0 "scripts read the real git binary and flag the wrapper"
 
 # --- 1.3: an unclean tree is surveyed, read-only, before anyone is asked to clean it
-D="$T/dirty"; mkdir -p "$D" && git init -q "$D" && git -C "$D" config user.email t@t && git -C "$D" config user.name t
+D="$T/dirty"; mkdir -p "$D" && git init -q -b main "$D" && git -C "$D" config user.email t@t && git -C "$D" config user.name t
 printf '# P\n' > "$D/CLAUDE.md" && git -C "$D" add -A && git -C "$D" commit -qm init
 sub_state=$(python3 "$REPO/tests/dirty_fixture.py" "$D")
 before=$(git -C "$D" status --porcelain --untracked-files=all; git -C "$D" stash list)
@@ -178,7 +178,7 @@ stale=$(python3 "$S/detect.py" --project "$W" --git-only | python3 -c "import js
 check "$stale" "0 True 3" "behind 0 against an old reference is flagged as a stale comparison"
 
 # --- correction 2 of 1.1: an existing hook setup is never taken over silently
-H="$T/husky"; mkdir -p "$H/.husky" && git -C "$H" init -q && git -C "$H" config user.email t@t && git -C "$H" config user.name t
+H="$T/husky"; mkdir -p "$H/.husky" && git -C "$H" init -q -b main && git -C "$H" config user.email t@t && git -C "$H" config user.name t
 git -C "$H" config core.hooksPath .husky && printf '#!/bin/sh\nnpm test\n' > "$H/.husky/pre-commit"
 python3 "$S/install.py" --project "$H" --agents claude-code --with-precommit --apply >/dev/null
 grep -q "harness-audit" "$H/.husky/pre-commit"; check $? 0 "husky: hook installed into the configured hooksPath"
@@ -186,7 +186,7 @@ grep -q "harness-audit" "$H/.husky/pre-commit"; check $? 0 "husky: hook installe
 check "$(git -C "$H" config --local --get core.hooksPath)" ".husky" "husky: core.hooksPath left untouched"
 grep -q "npm test" "$H/.husky/pre-commit"; check $? 0 "husky: existing hook content preserved"
 
-G="$T/legacy"; mkdir -p "$G" && git -C "$G" init -q && git -C "$G" config user.email t@t && git -C "$G" config user.name t
+G="$T/legacy"; mkdir -p "$G" && git -C "$G" init -q -b main && git -C "$G" config user.email t@t && git -C "$G" config user.name t
 printf '#!/bin/sh\necho mine\n' > "$G/.git/hooks/pre-commit" && chmod +x "$G/.git/hooks/pre-commit"
 gout=$(python3 "$S/install.py" --project "$G" --agents claude-code --with-precommit --apply)
 case "$gout" in *"SKIP   pre-commit"*) check 1 1 "legacy hooks: install warns instead of taking over";; *) check 0 1 "legacy hooks: install warns instead of taking over";; esac
@@ -223,7 +223,7 @@ rm "$FH/.claude/CLAUDE.md"
 
 # --- 1.4: which instruction file each agent actually reads, and the silent failures
 R="$T/resolution"; RH="$T/reshome"; mkdir -p "$R/.claude" "$RH/.claude"
-git init -q "$R" && git -C "$R" config user.email t@t && git -C "$R" config user.name t
+git init -q -b main "$R" && git -C "$R" config user.email t@t && git -C "$R" config user.name t
 printf '# team\n- one shared rule\n' > "$R/AGENTS.md"
 # HARNESS_MANAGED_SETTINGS keeps the test off the machine's real managed policy file.
 export HARNESS_MANAGED_SETTINGS="$RH/managed.json"
@@ -289,7 +289,7 @@ assert 'AGENTS.override.md' not in lint.ENTRY, lint.ENTRY
 assert lint.is_harness_file(__import__('pathlib').Path('$R'), {'docs_dir': 'docs', 'index': {}}, 'AGENTS.override.md')"
 check $? 0 "the override stays out of the Claude entry-file budget but is still linted"
 
-B="$T/bigmd"; mkdir -p "$B" && git init -q "$B" && git -C "$B" config user.email t@t && git -C "$B" config user.name t
+B="$T/bigmd"; mkdir -p "$B" && git init -q -b main "$B" && git -C "$B" config user.email t@t && git -C "$B" config user.name t
 python3 -c "
 with open('$B/CLAUDE.md','w') as fh:
     fh.write('# big\n'); fh.truncate(4*1024*1024 + 1)"
@@ -311,7 +311,7 @@ assert '4.00' in hlib.ratio_note({}) and 'floor' in hlib.ratio_note({}), hlib.ra
 assert 'calibrated' in hlib.ratio_note({'budgets': {'chars_per_token': 2.1}}), 'calibrated note'"
 check $? 0 "estimate_tokens keeps 4.00 by default and honours a calibrated ratio"
 
-C="$T/calib"; mkdir -p "$C" && git init -q "$C" && git -C "$C" config user.email t@t && git -C "$C" config user.name t
+C="$T/calib"; mkdir -p "$C" && git init -q -b main "$C" && git -C "$C" config user.email t@t && git -C "$C" config user.name t
 python3 -c "open('$C/CLAUDE.md','w').write('# m\n' + 'palavra ' * 5000)"
 python3 "$S/install.py" --project "$C" --agents claude-code --apply >/dev/null
 # Feed it a /context number that is exactly half the characters it reads, so the ratio it
@@ -339,7 +339,7 @@ json.dump(c,open(p,'w'),indent=2)"
 
 # --- F2: a vault folder named like part of the project is found, and [] is never the whole answer
 V="$T/vault"; mkdir -p "$V/.obsidian" "$V/B01 Projetos/tavoloo" "$V/A00 inbox"
-PJ="$T/tavoloo-fmsolutions-main"; mkdir -p "$PJ" && git init -q "$PJ"
+PJ="$T/tavoloo-fmsolutions-main"; mkdir -p "$PJ" && git init -q -b main "$PJ"
 python3 "$S/detect.py" --project "$PJ" --search "$V" | python3 -c "
 import json,sys
 v=[x for x in json.load(sys.stdin)['obsidian_vaults_found'] if x['path'].endswith('/vault')]
@@ -354,7 +354,7 @@ assert detect.name_tokens('my-api-web') == {'my-api-web'}, detect.name_tokens('m
 check $? 0 "tokens under 4 characters are not matched on"
 
 # --- F3: shared paragraphs between entry files of different sizes are a fork, not double payment
-K="$T/fork"; mkdir -p "$K" && git init -q "$K"
+K="$T/fork"; mkdir -p "$K" && git init -q -b main "$K"
 python3 -c "
 para = ('A shared paragraph, long enough to be counted as duplicated instruction content between two '
         'entry files of this fixture project, which needs more than a hundred and twenty characters.')
